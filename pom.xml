@@ -104,7 +104,7 @@
             <dependency>
                 <groupId>org.openexi</groupId>
                 <artifactId>Nagasena</artifactId>
-                <version>0000.0001.0256.0</version>
+                <version>0000.0001.0270.0</version>
             </dependency>
 
             <dependency>
