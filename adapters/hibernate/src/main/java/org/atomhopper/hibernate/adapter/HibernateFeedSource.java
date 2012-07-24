@@ -1,9 +1,16 @@
 package org.atomhopper.hibernate.adapter;
 
+import java.io.ByteArrayInputStream;
 import java.io.StringReader;
+import java.io.StringWriter;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import javax.xml.parsers.SAXParserFactory;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.sax.SAXTransformerFactory;
+import javax.xml.transform.sax.TransformerHandler;
+import javax.xml.transform.stream.StreamResult;
 import org.apache.abdera.Abdera;
 import static org.apache.abdera.i18n.text.UrlEncoding.decode;
 import static org.apache.abdera.i18n.text.UrlEncoding.encode;
@@ -26,6 +33,11 @@ import org.atomhopper.hibernate.query.SimpleCategoryCriteriaGenerator;
 import org.atomhopper.response.AdapterResponse;
 import org.atomhopper.util.uri.template.EnumKeyedTemplateParameters;
 import org.atomhopper.util.uri.template.URITemplate;
+import org.openexi.proc.common.AlignmentType;
+import org.openexi.proc.common.GrammarOptions;
+import org.openexi.proc.grammars.GrammarCache;
+import org.openexi.sax.EXIReader;
+import org.xml.sax.InputSource;
 
 public class HibernateFeedSource implements FeedSource {
 
@@ -134,7 +146,8 @@ public class HibernateFeedSource implements FeedSource {
     }
 
     private Entry hydrateEntry(PersistedEntry persistedEntry, Abdera abderaReference) {
-        final Document<Entry> hydratedEntryDocument = abderaReference.getParser().parse(new StringReader(persistedEntry.getEntryBody()));
+        final Document<Entry> hydratedEntryDocument = abderaReference.getParser()
+                .parse(new StringReader(decodeEntryBodyFromEXI(persistedEntry.getEntryBody())));
         Entry entry = null;
 
         if (hydratedEntryDocument != null) {
@@ -144,6 +157,35 @@ public class HibernateFeedSource implements FeedSource {
         }
 
         return entry;
+    }
+
+    private String decodeEntryBodyFromEXI(byte[] bytes) {
+        try {
+            StringWriter stringWriter = new StringWriter();
+            final GrammarCache grammarCache = new GrammarCache(null, GrammarOptions.DEFAULT_OPTIONS);
+
+            // Check if entrybody is EXI encoded
+            if((bytes[0] != 36 && bytes[1] != 69
+                    && bytes[2] != 88 && bytes[3] != 73)) {
+                return new String(bytes);
+            }
+
+            SAXTransformerFactory saxTransformerFactory = (SAXTransformerFactory)TransformerFactory.newInstance();
+            SAXParserFactory saxParserFactory = SAXParserFactory.newInstance();
+            saxParserFactory.setNamespaceAware(true);
+            TransformerHandler transformerHandler = saxTransformerFactory.newTransformerHandler();
+            transformerHandler.setResult(new StreamResult(stringWriter));
+
+            EXIReader reader = new EXIReader();
+            reader.setEXISchema(grammarCache);
+            reader.setAlignmentType(AlignmentType.compress);
+            reader.setContentHandler(transformerHandler);
+            reader.parse(new InputSource(new ByteArrayInputStream(bytes)));
+
+            return stringWriter.getBuffer().toString();
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
     @Override

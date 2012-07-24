@@ -51,7 +51,7 @@ public class HibernateFeedSourceTest {
             persistedEntry = new PersistedEntry();
             persistedEntry.setFeed(persistedFeed);
             persistedEntry.setEntryId(ID);
-            persistedEntry.setEntryBody(ENTRY_BODY);
+            persistedEntry.setEntryBody(ENTRY_BODY.getBytes());
         }
 
         @Test(expected = UnsupportedOperationException.class)

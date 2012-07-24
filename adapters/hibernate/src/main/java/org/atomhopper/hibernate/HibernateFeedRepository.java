@@ -1,5 +1,7 @@
 package org.atomhopper.hibernate;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.util.*;
 import org.atomhopper.adapter.jpa.PersistedCategory;
 import org.atomhopper.adapter.jpa.PersistedEntry;
@@ -16,8 +18,13 @@ import org.hibernate.Transaction;
 import org.hibernate.criterion.Order;
 import org.hibernate.criterion.Projections;
 import org.hibernate.criterion.Restrictions;
+import org.openexi.proc.common.AlignmentType;
+import org.openexi.proc.common.GrammarOptions;
+import org.openexi.proc.grammars.GrammarCache;
+import org.openexi.sax.Transmogrifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xml.sax.InputSource;
 
 public class HibernateFeedRepository implements FeedRepository {
 
@@ -143,7 +150,7 @@ public class HibernateFeedRepository implements FeedRepository {
 
     @Override
     public List<PersistedEntry> getFeedPage(final String feedName, final PersistedEntry markerEntry, final PageDirection direction,
-    final CategoryCriteriaGenerator criteriaGenerator, final int pageSize) {
+            final CategoryCriteriaGenerator criteriaGenerator, final int pageSize) {
         return performComplexActionNonTransactionable(new ComplexSessionAction<List<PersistedEntry>>() {
 
             @Override
@@ -192,8 +199,7 @@ public class HibernateFeedRepository implements FeedRepository {
                 final Set<PersistedCategory> updatedCategories = new HashSet<PersistedCategory>();
 
                 for (PersistedCategory entryCategory : categories) {
-                    PersistedCategory liveCategory = (PersistedCategory) liveSession.createCriteria(PersistedCategory.class)
-                            .add(Restrictions.idEq(entryCategory.getTerm())).uniqueResult();
+                    PersistedCategory liveCategory = (PersistedCategory) liveSession.createCriteria(PersistedCategory.class).add(Restrictions.idEq(entryCategory.getTerm())).uniqueResult();
 
                     if (liveCategory == null) {
                         liveCategory = new PersistedCategory(entryCategory.getTerm());
@@ -221,7 +227,7 @@ public class HibernateFeedRepository implements FeedRepository {
                 }
 
                 liveSession.saveOrUpdate(feed);
-                liveSession.save(entry);
+                liveSession.save(encodeEntryBodyToEXI(entry));
             }
         });
     }
@@ -243,8 +249,7 @@ public class HibernateFeedRepository implements FeedRepository {
 
             @Override
             public PersistedEntry perform(Session liveSession) {
-                return (PersistedEntry) liveSession.createCriteria(PersistedEntry.class)
-                        .add(Restrictions.idEq(entryId)).add(Restrictions.eq("feed.name", feedName)).uniqueResult();
+                return (PersistedEntry) liveSession.createCriteria(PersistedEntry.class).add(Restrictions.idEq(entryId)).add(Restrictions.eq("feed.name", feedName)).uniqueResult();
             }
         });
     }
@@ -267,10 +272,7 @@ public class HibernateFeedRepository implements FeedRepository {
 
             @Override
             public List<PersistedEntry> perform(Session liveSession) {
-                Criteria criteria = liveSession.createCriteria(PersistedEntry.class)
-                        .add(Restrictions.eq(FEED_NAME, feedName))
-                        .addOrder(Order.asc(DATE_LAST_UPDATED))
-                        .setMaxResults(pageSize);
+                Criteria criteria = liveSession.createCriteria(PersistedEntry.class).add(Restrictions.eq(FEED_NAME, feedName)).addOrder(Order.asc(DATE_LAST_UPDATED)).setMaxResults(pageSize);
 
                 criteriaGenerator.enhanceCriteria(criteria);
 
@@ -288,8 +290,7 @@ public class HibernateFeedRepository implements FeedRepository {
             public Integer perform(Session liveSession) {
                 Criteria criteria = liveSession.createCriteria(PersistedEntry.class);
 
-                criteria.add(Restrictions.eq(FEED_NAME, feedName))
-                        .setProjection(Projections.rowCount()).uniqueResult();
+                criteria.add(Restrictions.eq(FEED_NAME, feedName)).setProjection(Projections.rowCount()).uniqueResult();
 
                 criteriaGenerator.enhanceCriteria(criteria);
 
@@ -307,10 +308,7 @@ public class HibernateFeedRepository implements FeedRepository {
             public PersistedEntry perform(Session liveSession) {
                 Criteria criteria = liveSession.createCriteria(PersistedEntry.class);
 
-                criteria.add(Restrictions.eq(FEED_NAME, feedName))
-                                .add(Restrictions.lt(DATE_LAST_UPDATED, persistedEntry.getCreationDate()))
-                                .addOrder(Order.desc(DATE_LAST_UPDATED))
-                                .setMaxResults(1);
+                criteria.add(Restrictions.eq(FEED_NAME, feedName)).add(Restrictions.lt(DATE_LAST_UPDATED, persistedEntry.getCreationDate())).addOrder(Order.desc(DATE_LAST_UPDATED)).setMaxResults(1);
 
                 criteriaGenerator.enhanceCriteria(criteria);
 
@@ -321,9 +319,33 @@ public class HibernateFeedRepository implements FeedRepository {
 
     private int safeLongToInt(long value) {
         if (value < Integer.MIN_VALUE || value > Integer.MAX_VALUE) {
-            throw new IllegalArgumentException
-                (value + " cannot be cast to int without changing its value.");
+            throw new IllegalArgumentException(value + " cannot be cast to int without changing its value.");
         }
         return (int) value;
+    }
+
+    private PersistedEntry encodeEntryBodyToEXI(PersistedEntry entry) {
+        ByteArrayOutputStream outStream = new ByteArrayOutputStream();
+        final GrammarCache grammarCache = new GrammarCache(null, GrammarOptions.DEFAULT_OPTIONS);
+
+        try {
+            Transmogrifier transmogrifier = new Transmogrifier();
+            transmogrifier.setEXISchema(grammarCache);
+            transmogrifier.setAlignmentType(AlignmentType.compress);
+            transmogrifier.setPreserveLexicalValues(false);
+            transmogrifier.setPreserveWhitespaces(false);
+            transmogrifier.setOutputCookie(true);
+            InputSource inputSource = new InputSource(new ByteArrayInputStream(entry.getEntryBody()));
+            transmogrifier.setOutputStream(outStream);
+
+            transmogrifier.encode(inputSource);
+            entry.setEntryBody(outStream.toByteArray());
+
+            if (outStream != null) {
+                outStream.close();
+            }
+        } catch (Exception ex) {
+        }
+        return entry;
     }
 }

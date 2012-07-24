@@ -81,7 +81,7 @@ public class PersistedEntryTest {
         @Test
         public void shouldReturnEntryBody() throws Exception {
             assertNull("Getting entry body should return null.", persistedEntry.getEntryBody());
-            persistedEntry.setEntryBody("entryBody");
+            persistedEntry.setEntryBody("<entry xmlns='http://www.w3.org/2005/Atom'></entry>".getBytes());
             assertNotNull("Getting entry body should no longer return null.", persistedEntry.getEntryBody());
         }
 

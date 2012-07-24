@@ -69,7 +69,7 @@ public class HibernateFeedPublisher implements FeedPublisher {
         final PersistedFeed feedRef = new PersistedFeed(postEntryRequest.getFeedName(), UUID_URI_SCHEME + UUID.randomUUID().toString());
 
         persistedEntry.setFeed(feedRef);
-        persistedEntry.setEntryBody(entryToString(abderaParsedEntry));
+        persistedEntry.setEntryBody(entryToString(abderaParsedEntry).getBytes());
 
         abderaParsedEntry.setId(persistedEntry.getEntryId());
         abderaParsedEntry.setUpdated(persistedEntry.getDateLastUpdated());

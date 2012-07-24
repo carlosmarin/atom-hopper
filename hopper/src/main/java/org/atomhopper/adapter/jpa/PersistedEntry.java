@@ -1,26 +1,22 @@
 package org.atomhopper.adapter.jpa;
 
-import javax.persistence.Basic;
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
-import javax.persistence.Lob;
-import javax.persistence.ManyToMany;
-import javax.persistence.ManyToOne;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.Serializable;
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.TimeZone;
+import java.io.StringWriter;
+import java.util.*;
+import javax.persistence.*;
+import javax.xml.parsers.SAXParserFactory;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.sax.SAXTransformerFactory;
+import javax.xml.transform.sax.TransformerHandler;
+import javax.xml.transform.stream.StreamResult;
+import org.openexi.proc.common.AlignmentType;
+import org.openexi.proc.common.GrammarOptions;
+import org.openexi.proc.grammars.GrammarCache;
+import org.openexi.sax.EXIReader;
+import org.openexi.sax.Transmogrifier;
+import org.xml.sax.InputSource;
 
 @Entity
 @Table(name = "Entries")
@@ -29,12 +25,12 @@ public class PersistedEntry implements Serializable {
     @Id
     @Column(name = "EntryID")
     private String entryId;
-    
+
     @Basic(optional = false)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "Feed")
     private PersistedFeed feed;
-    
+
     @ManyToMany(fetch = FetchType.LAZY, cascade={CascadeType.ALL})
     @JoinTable(name = "CategoryEntryReferences",
     joinColumns = {
@@ -42,27 +38,29 @@ public class PersistedEntry implements Serializable {
     inverseJoinColumns = {
         @JoinColumn(name = "category", referencedColumnName = "Term")})
     private Set<PersistedCategory> categories;
-    
+
     @Column(name = "EntryBody")
     @Lob
-    private String entryBody;
-    
+    private byte[] entryBody;
+
     @Basic(optional = false)
     @Column(name = "CreationDate")
     @Temporal(TemporalType.TIMESTAMP)
     private Date creationDate;
-    
+
     @Basic(optional = false)
     @Column(name = "DateLastUpdated")
     @Temporal(TemporalType.TIMESTAMP)
     private Date dateLastUpdated;
 
+    private final static GrammarCache grammarCache = new GrammarCache(null, GrammarOptions.DEFAULT_OPTIONS);
+
     public PersistedEntry() {
         categories = Collections.EMPTY_SET;
-        
+
         final Calendar localNow = Calendar.getInstance(TimeZone.getDefault());
         localNow.setTimeInMillis(System.currentTimeMillis());
-        
+
         creationDate = localNow.getTime();
         dateLastUpdated = localNow.getTime();
     }
@@ -98,11 +96,11 @@ public class PersistedEntry implements Serializable {
         this.categories = categories;
     }
 
-    public String getEntryBody() {
-        return entryBody;
+    public byte[] getEntryBody() {
+        return this.entryBody;
     }
 
-    public void setEntryBody(String entryBody) {
+    public void setEntryBody(byte[] entryBody) {
         this.entryBody = entryBody;
     }
 

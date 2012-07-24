@@ -102,6 +102,12 @@
             </dependency>
 
             <dependency>
+                <groupId>org.openexi</groupId>
+                <artifactId>Nagasena</artifactId>
+                <version>0000.0001.0256.0</version>
+            </dependency>
+
+            <dependency>
                 <groupId>javax</groupId>
                 <artifactId>javaee-web-api</artifactId>
                 <version>6.0</version>
