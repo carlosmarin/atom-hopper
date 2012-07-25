@@ -1,22 +1,8 @@
 package org.atomhopper.adapter.jpa;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.Serializable;
-import java.io.StringWriter;
 import java.util.*;
 import javax.persistence.*;
-import javax.xml.parsers.SAXParserFactory;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.sax.SAXTransformerFactory;
-import javax.xml.transform.sax.TransformerHandler;
-import javax.xml.transform.stream.StreamResult;
-import org.openexi.proc.common.AlignmentType;
-import org.openexi.proc.common.GrammarOptions;
-import org.openexi.proc.grammars.GrammarCache;
-import org.openexi.sax.EXIReader;
-import org.openexi.sax.Transmogrifier;
-import org.xml.sax.InputSource;
 
 @Entity
 @Table(name = "Entries")
@@ -52,8 +38,6 @@ public class PersistedEntry implements Serializable {
     @Column(name = "DateLastUpdated")
     @Temporal(TemporalType.TIMESTAMP)
     private Date dateLastUpdated;
-
-    private final static GrammarCache grammarCache = new GrammarCache(null, GrammarOptions.DEFAULT_OPTIONS);
 
     public PersistedEntry() {
         categories = Collections.EMPTY_SET;
