@@ -43,6 +43,16 @@ public class HibernateFeedSource implements FeedSource {
 
     private static final int PAGE_SIZE = 25;
     private FeedRepository feedRepository;
+    private SAXTransformerFactory saxTransformerFactory;
+    private SAXParserFactory saxParserFactory;
+    private EXIReader reader;
+
+    public HibernateFeedSource() {
+        saxTransformerFactory = (SAXTransformerFactory)TransformerFactory.newInstance();
+        saxParserFactory = SAXParserFactory.newInstance();
+        saxParserFactory.setNamespaceAware(true);
+        reader = new EXIReader();
+    }
 
     public void setFeedRepository(FeedRepository feedRepository) {
         this.feedRepository = feedRepository;
@@ -170,13 +180,12 @@ public class HibernateFeedSource implements FeedSource {
                 return new String(bytes);
             }
 
-            SAXTransformerFactory saxTransformerFactory = (SAXTransformerFactory)TransformerFactory.newInstance();
-            SAXParserFactory saxParserFactory = SAXParserFactory.newInstance();
-            saxParserFactory.setNamespaceAware(true);
+            //SAXTransformerFactory saxTransformerFactory = (SAXTransformerFactory)TransformerFactory.newInstance();
+            //SAXParserFactory saxParserFactory = SAXParserFactory.newInstance();
+            //saxParserFactory.setNamespaceAware(true);
             TransformerHandler transformerHandler = saxTransformerFactory.newTransformerHandler();
             transformerHandler.setResult(new StreamResult(stringWriter));
 
-            EXIReader reader = new EXIReader();
             reader.setEXISchema(grammarCache);
             reader.setAlignmentType(AlignmentType.compress);
             reader.setContentHandler(transformerHandler);
